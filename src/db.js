@@ -1,6 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
-const dbPath = path.join(process.cwd(), 'queuectl.db');//process.cwd() → matlab "current working directory" — jahan se command chalaya hai wahi folder
+const dbPath = path.join(process.cwd(), 'queuectl.db');
 const db = new Database(dbPath);
 const crypto = require('crypto');
 db.exec(`
@@ -63,7 +63,7 @@ const claimJob = db.transaction((workerId) => {
     // Step 3: Current time
     const now = new Date().toISOString();
 
-    db.prepare(`
+    const result = db.prepare(`
     UPDATE jobs
     SET
       state = 'processing',
@@ -80,25 +80,27 @@ const claimJob = db.transaction((workerId) => {
 
 });
 function completeJob(id, output) {
-  const now = new Date().toISOString();
+    const now = new Date().toISOString();
 
-  const stmt = db.prepare(`
+    const stmt = db.prepare(`
     UPDATE jobs
     SET
       state = 'completed',
       output = ?,
       updated_at = ?
-    WHERE id = ?
+  WHERE id = ?
+  AND state = 'processing'
   `);
 
-  stmt.run(output, now, id);
+    stmt.run(output, now, id);
 
-  return getJob(id);
+    return getJob(id);
 }
 module.exports = {
     db,
     enqueue,
     getJob,
     getPendingJob,
-    claimJob
+    claimJob,
+    completeJob
 };
