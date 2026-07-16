@@ -48,22 +48,25 @@ function getPendingJob() {
 }
 const claimJob = db.transaction((workerId) => {
 
-    const job = db.prepare(`
+  const now = new Date().toISOString();
+
+  const job = db.prepare(`
     SELECT *
     FROM jobs
     WHERE state = 'pending'
+    AND (
+      next_run_at IS NULL
+      OR next_run_at <= ?
+    )
     ORDER BY created_at ASC
     LIMIT 1
-  `).get();
+  `).get(now);
 
-    if (!job) {
-        return null;
-    }
+  if (!job) {
+    return null;
+  }
 
-    // Step 3: Current time
-    const now = new Date().toISOString();
-
-    const result = db.prepare(`
+  const result = db.prepare(`
     UPDATE jobs
     SET
       state = 'processing',
@@ -72,11 +75,12 @@ const claimJob = db.transaction((workerId) => {
     WHERE id = ?
       AND state = 'pending'
   `).run(workerId, now, job.id);
-    if (result.changes === 0) {
-        return null;
-    }
 
-    return getJob(job.id);
+  if (result.changes === 0) {
+    return null;
+  }
+
+  return getJob(job.id);
 
 });
 function completeJob(id, output) {
@@ -96,11 +100,53 @@ function completeJob(id, output) {
 
     return getJob(id);
 }
+function failJob(id, error) {
+  const job = getJob(id);
+  const attempts = job.attempts + 1;
+  if (attempts >= job.max_retries) {
+
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE jobs
+      SET
+        state = 'dead',
+        attempts = ?,
+        last_error = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(attempts, error, now, id);
+
+  } else {
+    const delaySeconds = 2 ** attempts;
+
+    const nextRun = new Date(
+      Date.now() + delaySeconds * 1000
+    ).toISOString();
+
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE jobs
+      SET
+        state = 'pending',
+        attempts = ?,
+        last_error = ?,
+        next_run_at = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(attempts, error, nextRun, now, id);
+
+  }
+  return getJob(id);
+
+}
 module.exports = {
     db,
     enqueue,
     getJob,
     getPendingJob,
     claimJob,
-    completeJob
-};
+    completeJob,
+    failJob
+  };
