@@ -1,5 +1,5 @@
 const { Command } = require('commander');
-const { enqueue, getJob, getAllJobs } = require('../src/db');
+const { enqueue, getJob, getAllJobs, getDeadJobs} = require('../src/db');
 const program = new Command();
 
 program
@@ -38,6 +38,21 @@ program
 
     if (jobs.length === 0) {
       console.log('No jobs found');
+      return;
+    }
+
+    console.table(jobs);
+
+  });
+  program
+  .command('dlq')
+  .description('List dead jobs')
+  .action(() => {
+
+    const jobs = getDeadJobs();
+
+    if (jobs.length === 0) {
+      console.log('DLQ is empty');
       return;
     }
 
