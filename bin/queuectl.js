@@ -1,5 +1,5 @@
 const { Command } = require('commander');
-const { enqueue, getJob, getAllJobs, getDeadJobs} = require('../src/db');
+const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState} = require('../src/db');
 const program = new Command();
 
 program
@@ -29,19 +29,17 @@ program
     console.table(job);
 
   });
-  program
+program
   .command('list')
-  .description('List all jobs')
-  .action(() => {
+  .description('List jobs')
+  .option('--state <state>', 'Filter by state')
+  .action((options) => {
 
-    const jobs = getAllJobs();
-
-    if (jobs.length === 0) {
-      console.log('No jobs found');
-      return;
+    if (options.state) {
+      console.table(getJobsByState(options.state));
+    } else {
+      console.table(getAllJobs());
     }
-
-    console.table(jobs);
 
   });
   program

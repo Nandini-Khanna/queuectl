@@ -160,6 +160,16 @@ function getDeadJobs() {
 
   return stmt.all();
 }
+function getJobsByState(state) {
+  const stmt = db.prepare(`
+    SELECT *
+    FROM jobs
+    WHERE state = ?
+    ORDER BY created_at ASC
+  `);
+
+  return stmt.all(state);
+}
 module.exports = {
     db,
     enqueue,
@@ -169,5 +179,6 @@ module.exports = {
     completeJob,
     failJob,
     getAllJobs,
-    getDeadJobs
+    getDeadJobs,
+    getJobsByState
   };
