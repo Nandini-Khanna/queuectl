@@ -141,6 +141,15 @@ function failJob(id, error) {
   return getJob(id);
 
 }
+function getAllJobs() {
+  const stmt = db.prepare(`
+    SELECT *
+    FROM jobs
+    ORDER BY created_at ASC
+  `);
+
+  return stmt.all();
+}
 module.exports = {
     db,
     enqueue,
@@ -148,5 +157,6 @@ module.exports = {
     getPendingJob,
     claimJob,
     completeJob,
-    failJob
+    failJob,
+    getAllJobs
   };

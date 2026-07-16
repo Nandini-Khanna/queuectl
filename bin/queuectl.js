@@ -1,6 +1,5 @@
 const { Command } = require('commander');
-
-const { enqueue, getJob } = require('../src/db');
+const { enqueue, getJob, getAllJobs } = require('../src/db');
 const program = new Command();
 
 program
@@ -28,6 +27,21 @@ program
     }
 
     console.table(job);
+
+  });
+  program
+  .command('list')
+  .description('List all jobs')
+  .action(() => {
+
+    const jobs = getAllJobs();
+
+    if (jobs.length === 0) {
+      console.log('No jobs found');
+      return;
+    }
+
+    console.table(jobs);
 
   });
 
