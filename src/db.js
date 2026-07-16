@@ -170,6 +170,15 @@ function getJobsByState(state) {
 
   return stmt.all(state);
 }
+function getQueueStatus() {
+  const stmt = db.prepare(`
+    SELECT state, COUNT(*) AS count
+    FROM jobs
+    GROUP BY state
+  `);
+
+  return stmt.all();
+}
 module.exports = {
     db,
     enqueue,
@@ -180,5 +189,6 @@ module.exports = {
     failJob,
     getAllJobs,
     getDeadJobs,
-    getJobsByState
+    getJobsByState,
+    getQueueStatus
   };

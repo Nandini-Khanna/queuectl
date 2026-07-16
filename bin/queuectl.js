@@ -1,5 +1,5 @@
 const { Command } = require('commander');
-const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState} = require('../src/db');
+const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState, getQueueStatus} = require('../src/db');
 const program = new Command();
 
 program
@@ -15,18 +15,26 @@ program
     console.log(`enqueued job '${created.id}' (state=${created.state})`);
   });
   program
-  .command('status <jobId>')
-  .description('Show status of a job')
-  .action((jobId) => {
+  .command('status [id]')
+  .description('Show job status or queue summary')
+  .action((id) => {
 
-    const job = getJob(jobId);
+    if (id) {
+      const job = getJob(id);
 
-    if (!job) {
-      console.log('Job not found');
+      if (!job) {
+        console.log('Job not found');
+        return;
+      }
+
+      console.table(job);
       return;
     }
 
-    console.table(job);
+    const summary = getQueueStatus();
+
+    console.log('Queue Summary');
+    console.table(summary);
 
   });
 program
