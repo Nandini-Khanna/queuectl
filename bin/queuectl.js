@@ -1,5 +1,5 @@
 const { Command } = require('commander');
-const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState, getQueueStatus, retryDeadJob, requestStop, clearStop } = require('../src/db');const program = new Command();
+const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState, getQueueStatus, retryDeadJob, requestStop, clearStop, setConfig, getConfig } = require('../src/db');const program = new Command();
 const { fork } = require('child_process');
 const path = require('path');
 program
@@ -102,5 +102,30 @@ workerCmd
   .action(() => {
     requestStop();
     console.log('Stop signal sent. Workers will finish current job and exit.');
+  });
+  const configCmd = program
+  .command('config')
+  .description('Manage configuration');
+
+configCmd
+  .command('set <key> <value>')
+  .description('Set a config value (max-retries, backoff-base)')
+  .action((key, value) => {
+    const dbKey = key.replace(/-/g, '_');  // "max-retries" -> "max_retries"
+    setConfig(dbKey, value);
+    console.log(`config: ${key} = ${value}`);
+  });
+
+configCmd
+  .command('get [key]')
+  .description('Get config value(s)')
+  .action((key) => {
+    if (key) {
+      const dbKey = key.replace(/-/g, '_');
+      console.log(`${key} = ${getConfig(dbKey, '(not set)')}`);
+    } else {
+      console.log(`max-retries = ${getConfig('max_retries', 3)}`);
+      console.log(`backoff-base = ${getConfig('backoff_base', 2)}`);
+    }
   });
 program.parse();

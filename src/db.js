@@ -25,25 +25,31 @@ db.exec(`
     value TEXT
   )
 `);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )
+`);
 function enqueue(job) {
-    const id = job.id || crypto.randomUUID();
-    const now = new Date().toISOString();
+  const id = job.id || crypto.randomUUID();
+  const now = new Date().toISOString();
 
-    const stmt = db.prepare(`
+  const stmt = db.prepare(`
     INSERT INTO jobs (id, command, state, attempts, max_retries, created_at, updated_at)
     VALUES (?, ?, 'pending', 0, ?, ?, ?)
   `);
 
-    stmt.run(id, job.command, job.max_retries || 3, now, now);
-
-    return getJob(id);
+const defaultMaxRetries = parseInt(getConfig('max_retries', 3), 10);
+stmt.run(id, job.command, job.max_retries || defaultMaxRetries, now, now);
+return getJob(id);
 }
 function getJob(id) {
-    const stmt = db.prepare('SELECT * FROM jobs WHERE id = ?');
-    return stmt.get(id);
+  const stmt = db.prepare('SELECT * FROM jobs WHERE id = ?');
+  return stmt.get(id);
 }
 function getPendingJob() {
-    const stmt = db.prepare(`
+  const stmt = db.prepare(`
     SELECT *
     FROM jobs
     WHERE state = 'pending'
@@ -51,7 +57,7 @@ function getPendingJob() {
     LIMIT 1
   `);
 
-    return stmt.get();
+  return stmt.get();
 }
 const claimJob = db.transaction((workerId) => {
 
@@ -91,9 +97,9 @@ const claimJob = db.transaction((workerId) => {
 
 });
 function completeJob(id, output) {
-    const now = new Date().toISOString();
+  const now = new Date().toISOString();
 
-    const stmt = db.prepare(`
+  const stmt = db.prepare(`
     UPDATE jobs
     SET
       state = 'completed',
@@ -103,9 +109,9 @@ function completeJob(id, output) {
   AND state = 'processing'
   `);
 
-    stmt.run(output, now, id);
+  stmt.run(output, now, id);
 
-    return getJob(id);
+  return getJob(id);
 }
 function failJob(id, error) {
   const job = getJob(id);
@@ -125,7 +131,8 @@ function failJob(id, error) {
     `).run(attempts, error, now, id);
 
   } else {
-    const delaySeconds = 2 ** attempts;
+    const backoffBase = parseFloat(getConfig('backoff_base', 2));
+    const delaySeconds = backoffBase ** attempts;
 
     const nextRun = new Date(
       Date.now() + delaySeconds * 1000
@@ -165,6 +172,17 @@ function clearStop() {
 function isStopRequested() {
   const row = db.prepare(`SELECT value FROM control WHERE key = 'stop'`).get();
   return row && row.value === 'true';
+}
+function setConfig(key, value) {
+  db.prepare(`
+    INSERT INTO config (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, String(value));
+}
+
+function getConfig(key, defaultValue) {
+  const row = db.prepare(`SELECT value FROM config WHERE key = ?`).get(key);
+  return row ? row.value : defaultValue;
 }
 function retryDeadJob(id) {
 
@@ -233,19 +251,21 @@ function getQueueStatus() {
   return stmt.all();
 }
 module.exports = {
-    db,
-    enqueue,
-    getJob,
-    getPendingJob,
-    claimJob,
-    completeJob,
-    failJob,
-    getAllJobs,
-    getDeadJobs,
-    getJobsByState,
-    getQueueStatus, 
-    retryDeadJob,
-    requestStop,
-    clearStop,
-    isStopRequested
-  };
+  db,
+  enqueue,
+  getJob,
+  getPendingJob,
+  claimJob,
+  completeJob,
+  failJob,
+  getAllJobs,
+  getDeadJobs,
+  getJobsByState,
+  getQueueStatus,
+  retryDeadJob,
+  requestStop,
+  clearStop,
+  isStopRequested,
+  setConfig, 
+  getConfig
+};
