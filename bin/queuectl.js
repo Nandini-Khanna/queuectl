@@ -50,35 +50,32 @@ program
     }
 
   });
- program
-  .command('dlq')
-  .description('Dead Letter Queue')
 
+const dlq = program
+  .command('dlq')
+  .description('Dead Letter Queue');
+
+dlq
   .command('list')
   .description('List dead jobs')
   .action(() => {
     const jobs = getDeadJobs();
-
     if (jobs.length === 0) {
       console.log('DLQ is empty');
       return;
     }
-
     console.table(jobs);
   });
 
-program
-  .command('dlq-retry <id>')
+dlq
+  .command('retry <id>')
   .description('Retry a dead job')
   .action((id) => {
-
     const job = retryDeadJob(id);
-
     if (!job) {
       console.log('Dead job not found');
       return;
     }
-
     console.log(`Job '${job.id}' moved back to pending.`);
   });
   const workerCmd = program
