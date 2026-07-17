@@ -1,5 +1,5 @@
 const { spawn } = require('child_process');
-const { claimJob, completeJob, failJob } = require('./db');
+const { claimJob, completeJob, failJob, isStopRequested} = require('./db');
 
 const POLL_INTERVAL_MS = 1000;
 function executeCommand(command) {
@@ -42,7 +42,7 @@ async function startWorker(workerId) {
 
   console.log(`[${workerId}] Worker started (pid: ${process.pid})`);
 
-  while (!isShuttingDown) {
+ while (!isShuttingDown && !isStopRequested()) {
   const job = claimJob.immediate(workerId);
 
     if (!job) {

@@ -19,6 +19,12 @@ db.exec(`
     output TEXT
   )
 `);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS control (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )
+`);
 function enqueue(job) {
     const id = job.id || crypto.randomUUID();
     const now = new Date().toISOString();
@@ -142,6 +148,24 @@ function failJob(id, error) {
   return getJob(id);
 
 }
+function requestStop() {
+  db.prepare(`
+    INSERT INTO control (key, value) VALUES ('stop', 'true')
+    ON CONFLICT(key) DO UPDATE SET value = 'true'
+  `).run();
+}
+
+function clearStop() {
+  db.prepare(`
+    INSERT INTO control (key, value) VALUES ('stop', 'false')
+    ON CONFLICT(key) DO UPDATE SET value = 'false'
+  `).run();
+}
+
+function isStopRequested() {
+  const row = db.prepare(`SELECT value FROM control WHERE key = 'stop'`).get();
+  return row && row.value === 'true';
+}
 function retryDeadJob(id) {
 
   const job = getJob(id);
@@ -220,5 +244,8 @@ module.exports = {
     getDeadJobs,
     getJobsByState,
     getQueueStatus, 
-    retryDeadJob
+    retryDeadJob,
+    requestStop,
+    clearStop,
+    isStopRequested
   };
