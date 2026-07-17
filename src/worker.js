@@ -43,7 +43,7 @@ async function startWorker(workerId) {
   console.log(`[${workerId}] Worker started (pid: ${process.pid})`);
 
   while (!isShuttingDown) {
-    const job = claimJob(workerId);
+  const job = claimJob.immediate(workerId);
 
     if (!job) {
       await wait(POLL_INTERVAL_MS);

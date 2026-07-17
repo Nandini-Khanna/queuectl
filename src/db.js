@@ -2,6 +2,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const dbPath = path.join(process.cwd(), 'queuectl.db');
 const db = new Database(dbPath);
+db.pragma('busy_timeout = 5000');
 const crypto = require('crypto');
 db.exec(`
   CREATE TABLE IF NOT EXISTS jobs (
@@ -141,6 +142,34 @@ function failJob(id, error) {
   return getJob(id);
 
 }
+function retryDeadJob(id) {
+
+  const job = getJob(id);
+
+  if (!job) {
+    return null;
+  }
+
+  if (job.state !== 'dead') {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    UPDATE jobs
+    SET
+      state = 'pending',
+      attempts = 0,
+      worker_id = NULL,
+      last_error = NULL,
+      next_run_at = NULL,
+      updated_at = ?
+    WHERE id = ?
+  `).run(now, id);
+
+  return getJob(id);
+}
 function getAllJobs() {
   const stmt = db.prepare(`
     SELECT *
@@ -190,5 +219,6 @@ module.exports = {
     getAllJobs,
     getDeadJobs,
     getJobsByState,
-    getQueueStatus
+    getQueueStatus, 
+    retryDeadJob
   };

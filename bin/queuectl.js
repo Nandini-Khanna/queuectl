@@ -1,5 +1,5 @@
 const { Command } = require('commander');
-const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState, getQueueStatus} = require('../src/db');
+const { enqueue, getJob, getAllJobs, getDeadJobs, getJobsByState, getQueueStatus, retryDeadJob} = require('../src/db');
 const program = new Command();
 
 program
@@ -50,11 +50,13 @@ program
     }
 
   });
-  program
+ program
   .command('dlq')
+  .description('Dead Letter Queue')
+
+  .command('list')
   .description('List dead jobs')
   .action(() => {
-
     const jobs = getDeadJobs();
 
     if (jobs.length === 0) {
@@ -63,7 +65,20 @@ program
     }
 
     console.table(jobs);
-
   });
 
+program
+  .command('dlq-retry <id>')
+  .description('Retry a dead job')
+  .action((id) => {
+
+    const job = retryDeadJob(id);
+
+    if (!job) {
+      console.log('Dead job not found');
+      return;
+    }
+
+    console.log(`Job '${job.id}' moved back to pending.`);
+  });
 program.parse();
