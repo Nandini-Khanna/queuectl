@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueCTL Dashboard</title>
+
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>QueueCTL Dashboard</h1>
+        <div id="summary"></div>
+
+        <h2>Jobs</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>State</th>
+                    <th>Attempts</th>
+                    <th>Worker</th>
+                </tr>
+            </thead>
+
+            <tbody id="jobsTable"></tbody>
+
+        </table>
+
+    </div>
+
+    <script>
+
+        async function loadDashboard() {
+
+            const response = await fetch('/api/dashboard');
+
+            const data = await response.json();
+            const colors = {
+                pending: "pending",
+                processing: "processing",
+                completed: "completed",
+                dead: "dead"
+            };
+
+            let summaryHtml = "";
+
+            data.summary.forEach(item => {
+
+                summaryHtml += `
+        <div class="card ${colors[item.state]}">
+            <h3>${item.state.toUpperCase()}</h3>
+            <h1>${item.count}</h1>
+        </div>
+    `;
+
+            });
+
+            document.getElementById("summary").innerHTML = summaryHtml;
+
+            let rows = "";
+
+            data.jobs.forEach(job => {
+
+                rows += `
+        <tr>
+            <td>${job.id}</td>
+           <td>
+              <span class="badge ${job.state}">
+                 ${job.state}
+              </span>
+</td>
+            <td>${job.attempts}</td>
+            <td>${job.worker_id || "-"}</td>
+        </tr>
+        `;
+
+            });
+
+            document.getElementById("jobsTable").innerHTML = rows;
+
+        }
+
+        loadDashboard();
+
+    </script>
+
+</body>
+
+</html>
